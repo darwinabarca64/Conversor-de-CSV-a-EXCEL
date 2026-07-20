@@ -1150,20 +1150,44 @@
                     th.classList.add('col-excluded');
                 }
 
-                // Calcular estadísticas de la columna (datos del cuerpo)
+                // Calcular estadísticas y perfil de la columna (datos del cuerpo)
                 let emptyCount = 0;
-                let filledCount = 0;
+                let numberCount = 0;
+                let textCount = 0;
+                let dateCount = 0;
+                let percentageCount = 0;
+
                 for (let rIdx = 1; rIdx < workingRows.length; rIdx++) {
                     const cell = workingRows[rIdx][colIdx];
                     if (cell === null || cell === undefined || String(cell).trim() === '') {
                         emptyCount++;
                     } else {
-                        filledCount++;
+                        const val = String(cell).trim();
+                        if (/^\d{4}-\d{2}-\d{2}/.test(val) || /^\d{2}\.\d{2}\.\d{4}/.test(val)) {
+                            dateCount++;
+                        } else if (val.endsWith('%') && !isNaN(parseFloat(val))) {
+                            percentageCount++;
+                        } else if (!isNaN(Number(val))) {
+                            numberCount++;
+                        } else {
+                            textCount++;
+                        }
                     }
                 }
+
                 const totalColRows = workingRows.length - 1;
+                const filledCount = totalColRows - emptyCount;
                 const colPct = totalColRows > 0 ? Math.round((filledCount / totalColRows) * 100) : 0;
-                const colStatsText = `${colPct}% lleno` + (emptyCount > 0 ? ` (${emptyCount} vacíos)` : '');
+                const emptyPct = totalColRows > 0 ? Math.round((emptyCount / totalColRows) * 100) : 0;
+
+                // Crear desglose detallado de tipos
+                let breakdownParts = [];
+                if (numberCount > 0) breakdownParts.push(`🔢 Num: ${numberCount}`);
+                if (percentageCount > 0) breakdownParts.push(`% Porc: ${percentageCount}`);
+                if (dateCount > 0) breakdownParts.push(`📅 Fec: ${dateCount}`);
+                if (textCount > 0) breakdownParts.push(`🔤 Txt: ${textCount}`);
+                if (emptyCount > 0) breakdownParts.push(`∅ Vac: ${emptyCount}`);
+                const colStatsText = breakdownParts.join(' • ') || 'Vacía';
 
                 const colContainer = document.createElement('div');
                 colContainer.className = 'col-header-container';
@@ -1226,6 +1250,31 @@
                 colMeta.style.fontWeight = 'normal';
                 colMeta.style.marginTop = '3px';
                 colMeta.textContent = colStatsText;
+                
+                // Barra de Calidad de Datos estilo Power Query (Green = Válido, Red = Vacío)
+                const qualityBar = document.createElement('div');
+                qualityBar.style.display = 'flex';
+                qualityBar.style.height = '4px';
+                qualityBar.style.borderRadius = '2px';
+                qualityBar.style.overflow = 'hidden';
+                qualityBar.style.marginTop = '4px';
+                qualityBar.style.backgroundColor = '#edebe9';
+
+                const validSegment = document.createElement('div');
+                validSegment.style.width = `${colPct}%`;
+                validSegment.style.backgroundColor = 'var(--excel-green)';
+                validSegment.title = `Válidos: ${colPct}% (${filledCount} celdas)`;
+                qualityBar.appendChild(validSegment);
+
+                if (emptyPct > 0) {
+                    const emptySegment = document.createElement('div');
+                    emptySegment.style.width = `${emptyPct}%`;
+                    emptySegment.style.backgroundColor = '#a80000';
+                    emptySegment.title = `Vacíos: ${emptyPct}% (${emptyCount} celdas)`;
+                    qualityBar.appendChild(emptySegment);
+                }
+
+                th.appendChild(qualityBar);
                 th.appendChild(colMeta);
 
                 headerTr.appendChild(th);
