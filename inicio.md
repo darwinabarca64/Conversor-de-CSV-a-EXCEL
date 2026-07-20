@@ -1,4 +1,4 @@
-# Guía de Inicio Rápido - csv2xlsx
+# Guía de Inicio Rápido - Conversor de CSV a Excel
 
 Esta guía te guiará paso a paso para configurar y ejecutar localmente el proyecto de conversión de CSV a XLSX, además de preparar el control de versiones con Git.
 

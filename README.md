@@ -1,5 +1,5 @@
-# csv2xlsx
-JavaScript csv to spreadsheet (xlsx) converter.
+# Conversor de CSV a Excel
+Librería Javascript para la conversión de archivos CSV a hojas de cálculo de Excel (.xlsx) directamente en el cliente.
 Converts columns automatically to the correct column type and formats the data as a table, which allows simple filtering of data.
 For numerical values and floats, a sum row is added, for percentage values the average value.
 

@@ -1,13 +1,13 @@
 {
-  "name": "netas-csv2xlsx",
+  "name": "conversor-de-csv-a-excel",
   "version": "1.4.0",
-  "description": "JavaScript csv to spreadsheet (xlsx) converter",
+  "description": "Conversor de CSV a Excel en JavaScript",
   "author": "Lukas Buchs, netas.ch",
   "homepage": "https://www.netas.ch",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/netas-ch/csv2xlsx"
+    "url": "https://github.com/darwinabarca64/Conversor-de-CSV-a-EXCEL"
   },
   "browser": "src/Csv2Xlsx.js",
   "main": "src/Csv2Xlsx.js",
