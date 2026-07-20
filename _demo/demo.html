@@ -1,0 +1,1449 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conversor Inteligente de Datos a Excel - Microsoft 365</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --excel-green: #107c41;
+            --excel-green-hover: #0e6c38;
+            --excel-green-light: #e1f1e7;
+            --excel-green-border: #a3d7b8;
+            --bg-page: #faf9f8;
+            --bg-card: #ffffff;
+            --text-main: #323130;
+            --text-secondary: #605e5c;
+            --border-color: #edebe9;
+            --border-hover: #d2d0ce;
+            --shadow-sm: 0 1.6px 3.6px 0 rgba(0, 0, 0, 0.132), 0 0.3px 0.9px 0 rgba(0, 0, 0, 0.108);
+            --shadow-md: 0 6.4px 14.4px 0 rgba(0, 0, 0, 0.132), 0 1.2px 3.6px 0 rgba(0, 0, 0, 0.108);
+            --shadow-lg: 0 32px 64px 0 rgba(0, 0, 0, 0.187), 0 6px 16px 0 rgba(0, 0, 0, 0.122);
+            --font-family: 'Segoe UI', 'Inter', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+            
+            /* Power Query Colors */
+            --pq-theme: #005a9e;
+            --pq-theme-hover: #004578;
+            --pq-header-bg: #f3f2f1;
+            --pq-grid-line: #edebe9;
+            --pq-warning: #fff8f0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-page);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* Cabecera Excel 365 */
+        .app-header {
+            background-color: var(--excel-green);
+            color: #ffffff;
+            padding: 0.75rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: var(--shadow-sm);
+            z-index: 10;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .excel-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            background: #ffffff;
+            border-radius: 4px;
+            padding: 4px;
+        }
+
+        .app-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        .header-right {
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+
+        /* Contenedor Principal */
+        .main-container {
+            flex: 1;
+            max-width: 750px;
+            width: 100%;
+            margin: 3rem auto;
+            padding: 0 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        /* Tarjeta Principal */
+        .card {
+            background-color: var(--bg-card);
+            border-radius: 8px;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        /* Zona de Arrastre */
+        .drop-zone {
+            border: 2px dashed #a19f9d;
+            border-radius: 8px;
+            background-color: #faf9f8;
+            padding: 3rem 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .drop-zone:hover {
+            border-color: var(--text-secondary);
+            background-color: #f3f2f1;
+        }
+
+        .drop-zone.drag-over {
+            border-color: var(--excel-green);
+            background-color: var(--excel-green-light);
+            border-style: solid;
+            transform: scale(1.01);
+        }
+
+        .drop-icon-wrapper {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background-color: #f3f2f1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--excel-green);
+            transition: transform 0.25s ease;
+        }
+
+        .drop-zone.drag-over .drop-icon-wrapper {
+            transform: translateY(-5px);
+            background-color: #ffffff;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .drop-text-primary {
+            font-size: 1.05rem;
+            font-weight: 500;
+            color: var(--text-main);
+        }
+
+        .drop-text-secondary {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        /* Ocultar input nativo */
+        #csv-file-input {
+            display: none;
+        }
+
+        /* Estado Archivo Cargado */
+        .file-info-container {
+            display: none;
+            width: 100%;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1.25rem;
+            background-color: var(--excel-green-light);
+            border: 1px solid var(--excel-green-border);
+            border-radius: 6px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .file-info-details {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            text-align: left;
+        }
+
+        .file-icon-small {
+            color: var(--excel-green);
+            display: flex;
+            align-items: center;
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: var(--excel-green-hover);
+            font-size: 0.95rem;
+            word-break: break-all;
+        }
+
+        .file-size {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .remove-file-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .remove-file-btn:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+            color: #a80000;
+        }
+
+        /* Botones de acción intermedia */
+        .preview-trigger-container {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .btn-secondary {
+            background-color: #ffffff;
+            color: var(--text-main);
+            border: 1px solid #a19f9d;
+            border-radius: 4px;
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+            width: 100%;
+            justify-content: center;
+        }
+
+        .btn-secondary:hover {
+            background-color: #f3f2f1;
+            border-color: #8a8886;
+        }
+
+        /* Panel de Opciones Avanzadas */
+        .options-panel {
+            background-color: #faf9f8;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 1.25rem;
+        }
+
+        .options-header {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .form-label {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .form-select {
+            padding: 0.4rem 0.6rem;
+            font-size: 0.85rem;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background-color: #ffffff;
+            outline: none;
+            transition: border-color 0.2s;
+            font-family: var(--font-family);
+        }
+
+        .form-select:focus {
+            border-color: var(--excel-green);
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            font-size: 0.85rem;
+            user-select: none;
+            padding-top: 1.2rem;
+        }
+
+        .checkbox-input {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--excel-green);
+            cursor: pointer;
+        }
+
+        /* Botón Principal */
+        .btn-action {
+            background-color: var(--excel-green);
+            color: #ffffff;
+            border: none;
+            border-radius: 4px;
+            padding: 0.75rem 1.5rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: background-color 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+
+        .btn-action:hover {
+            background-color: var(--excel-green-hover);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-action:disabled {
+            background-color: #c8c6c4;
+            color: #a19f9d;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* Spinner */
+        .spinner {
+            display: none;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #ffffff;
+            animation: spin 0.8s linear infinite;
+        }
+
+        /* Status / Error Container */
+        .status-container {
+            display: none;
+            padding: 0.75rem 1rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            text-align: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .status-container.success {
+            display: block;
+            background-color: #dff6dd;
+            color: #107c41;
+            border: 1px solid #107c41;
+        }
+
+        .status-container.error {
+            display: block;
+            background-color: #fde7e9;
+            color: #a80000;
+            border: 1px solid #a80000;
+        }
+
+        /* MODAL POWER QUERY FLOTANTE */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-window {
+            background-color: #ffffff;
+            width: 95vw;
+            max-width: 1200px;
+            height: 85vh;
+            border-radius: 8px;
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: modalScaleUp 0.25s cubic-bezier(0.1, 0.9, 0.2, 1);
+        }
+
+        /* Cabecera del Modal */
+        .modal-header {
+            background-color: #f3f2f1;
+            border-bottom: 1px solid var(--border-color);
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .modal-close-btn {
+            background: none;
+            border: none;
+            font-size: 1.25rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            padding: 0.25rem;
+            border-radius: 4px;
+        }
+
+        .modal-close-btn:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+            color: #000000;
+        }
+
+        /* Barra de Herramientas del Modal */
+        .modal-toolbar {
+            background-color: #faf9f8;
+            border-bottom: 1px solid var(--border-color);
+            padding: 0.5rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-group-left {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .toolbar-group-right {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .btn-toolbar {
+            background: #ffffff;
+            border: 1px solid #d2d0ce;
+            padding: 0.35rem 0.75rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+            border-radius: 4px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            color: var(--text-main);
+            transition: all 0.15s;
+        }
+
+        .btn-toolbar:hover {
+            background-color: #f3f2f1;
+            border-color: #a19f9d;
+        }
+
+        .btn-toolbar.btn-primary-pq {
+            background-color: var(--excel-green);
+            color: #ffffff;
+            border-color: var(--excel-green);
+        }
+
+        .btn-toolbar.btn-primary-pq:hover {
+            background-color: var(--excel-green-hover);
+            border-color: var(--excel-green-hover);
+        }
+
+        /* Área de contenido del Modal */
+        .modal-content-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 1.25rem 1.5rem;
+            overflow: hidden;
+            gap: 0.75rem;
+        }
+
+        .modal-tip {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            background-color: var(--pq-warning);
+            padding: 0.4rem 0.75rem;
+            border-radius: 4px;
+            border-left: 3px solid #ffaa44;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Tabla de Edición */
+        .modal-table-wrapper {
+            flex: 1;
+            overflow: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background-color: #ffffff;
+        }
+
+        .pq-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+            text-align: left;
+            table-layout: auto;
+        }
+
+        .pq-table th {
+            background-color: #f3f2f1;
+            color: var(--text-main);
+            font-weight: 600;
+            padding: 0.5rem;
+            border-bottom: 2px solid var(--border-color);
+            border-right: 1px solid var(--pq-grid-line);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .pq-table th.col-excluded {
+            background-color: #edebe9;
+            color: #a19f9d;
+            text-decoration: line-through;
+        }
+
+        .pq-table td {
+            padding: 0.4rem 0.5rem;
+            border-bottom: 1px solid var(--pq-grid-line);
+            border-right: 1px solid var(--pq-grid-line);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 250px;
+            cursor: cell;
+        }
+
+        .pq-table td.cell-editable {
+            transition: background-color 0.15s;
+        }
+
+        .pq-table td.cell-editable:hover {
+            background-color: #faf9f8;
+            outline: 1px dashed var(--excel-green);
+        }
+
+        .pq-table tr:hover {
+            background-color: #faf9f8;
+        }
+
+        .pq-table tr.row-excluded {
+            opacity: 0.45;
+            background-color: #faf9f8;
+            text-decoration: line-through;
+        }
+
+        .pq-table tr.row-excluded td {
+            color: #a19f9d;
+        }
+
+        .pq-table td.col-excluded-cell {
+            opacity: 0.4;
+            background-color: #f3f2f1;
+            text-decoration: line-through;
+            color: #a19f9d;
+        }
+
+        /* Edición de celda (input integrado) */
+        .cell-edit-input {
+            width: 100%;
+            height: 100%;
+            border: 2px solid var(--excel-green);
+            padding: 0.2rem 0.4rem;
+            font-family: var(--font-family);
+            font-size: 0.82rem;
+            outline: none;
+            box-sizing: border-box;
+            background-color: #ffffff;
+        }
+
+        /* Cabeceras de columna con controles */
+        .col-header-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+        }
+
+        .col-header-text {
+            cursor: pointer;
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .col-header-text:hover {
+            text-decoration: underline;
+        }
+
+        .col-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .col-toggle-checkbox {
+            cursor: pointer;
+            accent-color: var(--excel-green);
+        }
+
+        /* Barra de estado inferior del Modal */
+        .modal-statusbar {
+            background-color: #f3f2f1;
+            border-top: 1px solid var(--border-color);
+            padding: 0.4rem 1.5rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Footer */
+        .app-footer {
+            margin-top: auto;
+            padding: 1.5rem;
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            border-top: 1px solid var(--border-color);
+        }
+
+        /* Animaciones */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes modalScaleUp {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="app-header">
+        <div class="header-left">
+            <div class="excel-icon">
+                <svg width="20" height="20" viewBox="0 0 23 23" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M11.5 0H1.5C0.67 0 0 0.67 0 1.5V21.5C0 22.33 0.67 23 1.5 23H21.5C22.33 23 23 22.33 23 21.5V11.5" fill="#107C41"/>
+                    <path d="M23 11.5L11.5 0V11.5H23Z" fill="#33C481"/>
+                    <path d="M7 6H10V8H7V6ZM7 10H10V12H7V10ZM7 14H10V16H7V14ZM12 6H17V8H12V6ZM12 10H17V12H12V10ZM12 14H17V16H12V14Z" fill="white"/>
+                    <path d="M4 6H5V16H4V6Z" fill="white"/>
+                </svg>
+            </div>
+            <h1 class="app-title">Conversor Inteligente de Datos a Excel</h1>
+        </div>
+        <div class="header-right">Office 365 Engine</div>
+    </header>
+
+    <main class="main-container">
+        <div class="card">
+            <!-- Zona de Soltado / Carga -->
+            <div class="drop-zone" id="drop-zone">
+                <div class="drop-icon-wrapper">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                </div>
+                <div class="drop-text-primary" id="drop-text-main">
+                    Arrastre su archivo .csv aquí o haga clic para buscar
+                </div>
+                <div class="drop-text-secondary" id="drop-text-sub">
+                    Soporta formatos delimitados por comas, punto y comas o tabulaciones
+                </div>
+
+                <!-- Info del archivo cargado -->
+                <div class="file-info-container" id="file-info-container">
+                    <div class="file-info-details">
+                        <div class="file-icon-small">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                <polyline points="10 9 9 9 8 9"></polyline>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="file-name" id="selected-file-name">filename.csv</div>
+                            <div class="file-size" id="selected-file-size">0 KB</div>
+                        </div>
+                    </div>
+                    <button class="remove-file-btn" id="remove-file-btn" title="Quitar archivo">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <input type="file" id="csv-file-input" accept=".csv" />
+
+            <!-- Gatillador del Editor Flotante -->
+            <div class="preview-trigger-container" id="preview-trigger-container">
+                <button class="btn-secondary" id="open-pq-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="9" y1="3" x2="9" y2="21"></line>
+                        <line x1="15" y1="3" x2="15" y2="21"></line>
+                        <line x1="3" y1="9" x2="21" y2="9"></line>
+                        <line x1="3" y1="15" x2="21" y2="15"></line>
+                    </svg>
+                    <span>Configurar y Editar Datos (Power Query)</span>
+                </button>
+            </div>
+
+            <!-- Panel de Opciones Avanzadas -->
+            <div class="options-panel">
+                <div class="options-header">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                    <span>Configuración de Conversión</span>
+                </div>
+                <div class="options-grid">
+                    <div class="form-group">
+                        <label class="form-label" for="separator-select">Separador de Columnas</label>
+                        <select class="form-select" id="separator-select">
+                            <option value="auto">Autodetectar</option>
+                            <option value=",">Coma (,)</option>
+                            <option value=";">Punto y coma (;)</option>
+                            <option value="&#9;">Tabulación (Tab)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="charset-select">Codificación de Caracteres</label>
+                        <select class="form-select" id="charset-select">
+                            <option value="UTF-8">UTF-8</option>
+                            <option value="Windows-1252">Windows-1252 (Western)</option>
+                            <option value="ISO-8859-1">ISO-8859-1</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="checkbox-container">
+                            <input type="checkbox" class="checkbox-input" id="totals-checkbox" checked />
+                            <span>Fila de totales automática</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botón de Conversión -->
+            <button class="btn-action" id="convert-btn" disabled>
+                <span class="spinner" id="btn-spinner"></span>
+                <span id="btn-text">Convertir a Excel (.xlsx)</span>
+            </button>
+
+            <!-- Mensajes de estado -->
+            <div class="status-container" id="status-message"></div>
+        </div>
+    </main>
+
+    <!-- MODAL DE POWER QUERY -->
+    <div class="modal-overlay" id="pq-modal">
+        <div class="modal-window">
+            <div class="modal-header">
+                <div class="modal-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                        <polyline points="2 17 12 22 22 17"></polyline>
+                        <polyline points="2 12 12 17 22 12"></polyline>
+                    </svg>
+                    <span>Editor de Consultas (Power Query) - csv2xlsx</span>
+                </div>
+                <button class="modal-close-btn" id="modal-close-btn" title="Cerrar sin guardar">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="modal-toolbar">
+                <div class="toolbar-group-left">
+                    <button class="btn-toolbar btn-primary-pq" id="pq-apply-btn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        <span>Aplicar Cambios</span>
+                    </button>
+                    <button class="btn-toolbar" id="pq-reset-btn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M23 4v6h-6"></path>
+                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                        </svg>
+                        <span>Restablecer Todo</span>
+                    </button>
+                    <button class="btn-toolbar" id="pq-invert-btn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M16 3h5v5"></path>
+                            <path d="M4 20L21 3"></path>
+                            <path d="M21 16v5h-5"></path>
+                            <path d="M4 4l17 17"></path>
+                        </svg>
+                        <span>Invertir Selección</span>
+                    </button>
+                </div>
+                
+                <div class="toolbar-group-right">
+                    <div class="search-input-wrapper">
+                        <span class="search-icon">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                        </span>
+                        <input type="text" class="search-input" id="pq-search-input" placeholder="Filtrar por texto..." />
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-content-area">
+                <div class="modal-tip">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    <span>💡 **Tip de edición**: Haz doble clic en cualquier celda para modificar su valor. Desmarca las columnas en su cabecera para omitirlas en la exportación final.</span>
+                </div>
+                
+                <div class="modal-table-wrapper">
+                    <table class="pq-table" id="pq-table">
+                        <thead id="pq-table-head"></thead>
+                        <tbody id="pq-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="modal-statusbar">
+                <div id="pq-status-rows">Filas: 0 de 0 seleccionadas</div>
+                <div id="pq-status-cols">Columnas: 0 de 0 seleccionadas</div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="app-footer">
+        Desarrollado con motor de cliente ultraligero y seguro. Sus datos nunca salen de su navegador.
+    </footer>
+
+    <script type="module">
+        import { Csv2Xlsx } from '../src/Csv2Xlsx.js';
+        import { CsvProcessing } from '../src/csv/CsvProcessing.js';
+
+        // Elementos DOM Principales
+        const dropZone = document.getElementById('drop-zone');
+        const csvFileInput = document.getElementById('csv-file-input');
+        const dropTextMain = document.getElementById('drop-text-main');
+        const dropTextSub = document.getElementById('drop-text-sub');
+        const iconWrapper = dropZone.querySelector('.drop-icon-wrapper');
+        const fileInfoContainer = document.getElementById('file-info-container');
+        const selectedFileName = document.getElementById('selected-file-name');
+        const selectedFileSize = document.getElementById('selected-file-size');
+        const removeFileBtn = document.getElementById('remove-file-btn');
+        const previewTriggerContainer = document.getElementById('preview-trigger-container');
+
+        const convertBtn = document.getElementById('convert-btn');
+        const btnSpinner = document.getElementById('btn-spinner');
+        const btnText = document.getElementById('btn-text');
+        const statusMessage = document.getElementById('status-message');
+
+        const separatorSelect = document.getElementById('separator-select');
+        const charsetSelect = document.getElementById('charset-select');
+        const totalsCheckbox = document.getElementById('totals-checkbox');
+
+        // Elementos DOM del Modal Power Query
+        const pqModal = document.getElementById('pq-modal');
+        const openPqBtn = document.getElementById('open-pq-btn');
+        const modalCloseBtn = document.getElementById('modal-close-btn');
+        const pqApplyBtn = document.getElementById('pq-apply-btn');
+        const pqResetBtn = document.getElementById('pq-reset-btn');
+        const pqInvertBtn = document.getElementById('pq-invert-btn');
+        const pqSearchInput = document.getElementById('pq-search-input');
+        const pqTableHead = document.getElementById('pq-table-head');
+        const pqTableBody = document.getElementById('pq-table-body');
+        const pqStatusRows = document.getElementById('pq-status-rows');
+        const pqStatusCols = document.getElementById('pq-status-cols');
+
+        // Estado de datos
+        let loadedFile = null;
+        let originalText = ""; // Texto crudo original
+        let workingRows = [];  // Filas en edición (incluye cabecera en index 0)
+        let excludedRowIndices = new Set(); // Índices excluidos (1-based con respecto a datos)
+        let excludedColIndices = new Set(); // Índices de columna excluidos (0-based)
+        let visibleRowIndices = []; // Índices visibles en base al buscador del modal
+
+        // Eventos básicos
+        separatorSelect.addEventListener('change', async () => {
+            if (loadedFile) {
+                await parseAndLoadText(originalText);
+            }
+        });
+        charsetSelect.addEventListener('change', reloadFileContent);
+
+        async function reloadFileContent() {
+            if (loadedFile) {
+                const charsetValue = charsetSelect.value;
+                const buf = await loadedFile.arrayBuffer();
+                const decoder = new TextDecoder(charsetValue);
+                originalText = decoder.decode(buf);
+                await parseAndLoadText(originalText);
+            }
+        }
+
+        // Drag and Drop
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.classList.add('drag-over');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropZone.classList.remove('drag-over');
+            }, false);
+        });
+
+        dropZone.addEventListener('drop', async (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files && files.length > 0) {
+                await loadFileObject(files[0]);
+            }
+        });
+
+        dropZone.addEventListener('click', (e) => {
+            if (e.target.closest('#remove-file-btn')) return;
+            csvFileInput.click();
+        });
+
+        csvFileInput.addEventListener('change', async (e) => {
+            if (e.target.files && e.target.files.length > 0) {
+                await loadFileObject(e.target.files[0]);
+            }
+        });
+
+        removeFileBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            resetFileState();
+        });
+
+        async function loadFileObject(file) {
+            if (file.name.substring(file.name.length - 4).toLowerCase() !== '.csv') {
+                showStatus('Por favor, cargue un archivo con formato .csv válido.', 'error');
+                return;
+            }
+            loadedFile = file;
+
+            // Interfaz de zona de soltado
+            selectedFileName.textContent = file.name;
+            const kbSize = (file.size / 1024).toFixed(1);
+            selectedFileSize.textContent = `${kbSize} KB`;
+
+            dropTextMain.style.display = 'none';
+            dropTextSub.style.display = 'none';
+            iconWrapper.style.display = 'none';
+            fileInfoContainer.style.display = 'flex';
+            previewTriggerContainer.style.display = 'block';
+
+            convertBtn.removeAttribute('disabled');
+            clearStatus();
+
+            await reloadFileContent();
+        }
+
+        function resetFileState() {
+            loadedFile = null;
+            originalText = "";
+            workingRows = [];
+            excludedRowIndices.clear();
+            excludedColIndices.clear();
+            visibleRowIndices = [];
+
+            csvFileInput.value = '';
+            dropTextMain.style.display = 'block';
+            dropTextSub.style.display = 'block';
+            iconWrapper.style.display = 'flex';
+            fileInfoContainer.style.display = 'none';
+            previewTriggerContainer.style.display = 'none';
+            pqModal.style.display = 'none';
+
+            convertBtn.setAttribute('disabled', 'true');
+            clearStatus();
+        }
+
+        // Parsea y carga el contenido del CSV en la matriz de trabajo
+        async function parseAndLoadText(text) {
+            try {
+                const separatorValue = separatorSelect.value === 'auto' ? null : separatorSelect.value;
+                const cp = new CsvProcessing(text, separatorValue);
+                const csvData = cp.getCsvData();
+
+                workingRows = csvData.rows;
+                excludedRowIndices.clear();
+                excludedColIndices.clear();
+                pqSearchInput.value = '';
+            } catch (err) {
+                showStatus(`Error parseando el archivo CSV: ${err.message || err}`, 'error');
+            }
+        }
+
+        // --- CONTROL DEL MODAL ---
+        openPqBtn.addEventListener('click', () => {
+            if (!workingRows || workingRows.length === 0) return;
+            pqModal.style.display = 'flex';
+            renderPqTable();
+        });
+
+        modalCloseBtn.addEventListener('click', () => {
+            // Descartar cambios simplemente cerrando y recargando el original
+            pqModal.style.display = 'none';
+            reloadFileContent();
+        });
+
+        pqApplyBtn.addEventListener('click', () => {
+            pqModal.style.display = 'none';
+            showStatus('Cambios aplicados correctamente en la consulta.', 'success');
+        });
+
+        pqResetBtn.addEventListener('click', () => {
+            reloadFileContent().then(() => {
+                renderPqTable();
+            });
+        });
+
+        pqInvertBtn.addEventListener('click', () => {
+            visibleRowIndices.forEach(idx => {
+                if (excludedRowIndices.has(idx)) {
+                    excludedRowIndices.delete(idx);
+                } else {
+                    excludedRowIndices.add(idx);
+                }
+            });
+            renderPqTable();
+        });
+
+        pqSearchInput.addEventListener('input', () => {
+            renderPqTable();
+        });
+
+        // Renderizado del editor Power Query en la tabla del Modal
+        function renderPqTable() {
+            if (!workingRows || workingRows.length === 0) return;
+
+            pqTableHead.innerHTML = '';
+            pqTableBody.innerHTML = '';
+
+            const headers = workingRows[0];
+            const dataRows = workingRows.slice(1);
+
+            // Generar Cabeceras
+            const headerTr = document.createElement('tr');
+            
+            // Checkbox maestro para filas
+            const selectAllTh = document.createElement('th');
+            selectAllTh.className = 'cell-checkbox';
+            const selectAllCheck = document.createElement('input');
+            selectAllCheck.type = 'checkbox';
+            selectAllCheck.className = 'checkbox-input';
+            selectAllCheck.checked = excludedRowIndices.size === 0;
+            selectAllCheck.addEventListener('change', (e) => {
+                const checked = e.target.checked;
+                visibleRowIndices.forEach(idx => {
+                    if (checked) {
+                        excludedRowIndices.delete(idx);
+                    } else {
+                        excludedRowIndices.add(idx);
+                    }
+                });
+                renderPqRowStates();
+                updatePqStatus();
+            });
+            selectAllTh.appendChild(selectAllCheck);
+            headerTr.appendChild(selectAllTh);
+
+            // Cargar títulos de columna interactivos
+            headers.forEach((h, colIdx) => {
+                const th = document.createElement('th');
+                if (excludedColIndices.has(colIdx)) {
+                    th.classList.add('col-excluded');
+                }
+
+                const colContainer = document.createElement('div');
+                colContainer.className = 'col-header-container';
+
+                // Texto de la cabecera (doble click para renombrar columna)
+                const colText = document.createElement('span');
+                colText.className = 'col-header-text';
+                colText.textContent = h || `Columna ${colIdx + 1}`;
+                colText.title = "Doble clic para renombrar columna";
+                colText.addEventListener('dblclick', () => {
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.className = 'cell-edit-input';
+                    input.value = colText.textContent;
+                    input.addEventListener('blur', () => {
+                        const newVal = input.value.trim();
+                        if (newVal) {
+                            workingRows[0][colIdx] = newVal;
+                            colText.textContent = newVal;
+                        }
+                        colContainer.replaceChild(colText, input);
+                    });
+                    input.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') input.blur();
+                    });
+                    colContainer.replaceChild(input, colText);
+                    input.focus();
+                });
+
+                // Acciones de columna (excluir columna)
+                const colActions = document.createElement('div');
+                colActions.className = 'col-header-actions';
+                
+                const colCheck = document.createElement('input');
+                colCheck.type = 'checkbox';
+                colCheck.className = 'col-toggle-checkbox';
+                colCheck.checked = !excludedColIndices.has(colIdx);
+                colCheck.title = "Habilitar/Deshabilitar columna";
+                colCheck.addEventListener('change', () => {
+                    if (colCheck.checked) {
+                        excludedColIndices.delete(colIdx);
+                        th.classList.remove('col-excluded');
+                    } else {
+                        excludedColIndices.add(colIdx);
+                        th.classList.add('col-excluded');
+                    }
+                    renderPqColumnExcludedCells(colIdx, !colCheck.checked);
+                    updatePqStatus();
+                });
+
+                colActions.appendChild(colCheck);
+                colContainer.appendChild(colText);
+                colContainer.appendChild(colActions);
+                th.appendChild(colContainer);
+                headerTr.appendChild(th);
+            });
+            pqTableHead.appendChild(headerTr);
+
+            // Generar Filas de Datos
+            const query = pqSearchInput.value.toLowerCase().trim();
+            visibleRowIndices = [];
+
+            dataRows.forEach((row, i) => {
+                const actualIndex = i + 1; // 1-based para omitir header
+                const matchesQuery = query === '' || row.some(cell => String(cell).toLowerCase().includes(query));
+
+                if (matchesQuery) {
+                    visibleRowIndices.push(actualIndex);
+
+                    const tr = document.createElement('tr');
+                    tr.id = `pq-row-${actualIndex}`;
+
+                    // Checkbox de fila
+                    const tdCheck = document.createElement('td');
+                    tdCheck.className = 'cell-checkbox';
+                    const check = document.createElement('input');
+                    check.type = 'checkbox';
+                    check.className = 'checkbox-input';
+                    check.checked = !excludedRowIndices.has(actualIndex);
+                    check.addEventListener('change', () => {
+                        if (check.checked) {
+                            excludedRowIndices.delete(actualIndex);
+                            tr.classList.remove('row-excluded');
+                        } else {
+                            excludedRowIndices.add(actualIndex);
+                            tr.classList.add('row-excluded');
+                        }
+                        updatePqStatus();
+                        
+                        const allVisibleSelected = visibleRowIndices.every(idx => !excludedRowIndices.has(idx));
+                        selectAllCheck.checked = allVisibleSelected;
+                    });
+                    tdCheck.appendChild(check);
+                    tr.appendChild(tdCheck);
+
+                    // Celdas
+                    row.forEach((cell, colIdx) => {
+                        const td = document.createElement('td');
+                        td.className = 'cell-editable';
+                        td.textContent = cell !== null ? String(cell) : '';
+                        td.setAttribute('data-col', colIdx);
+                        
+                        if (excludedColIndices.has(colIdx)) {
+                            td.classList.add('col-excluded-cell');
+                        }
+
+                        // Edición por doble click
+                        td.addEventListener('dblclick', () => {
+                            if (excludedColIndices.has(colIdx)) return; // No editar columnas excluidas
+
+                            const input = document.createElement('input');
+                            input.type = 'text';
+                            input.className = 'cell-edit-input';
+                            input.value = td.textContent;
+                            input.addEventListener('blur', () => {
+                                const newVal = input.value;
+                                workingRows[actualIndex][colIdx] = newVal;
+                                td.textContent = newVal;
+                                td.classList.add('cell-editable');
+                            });
+                            input.addEventListener('keydown', (e) => {
+                                if (e.key === 'Enter') input.blur();
+                            });
+                            td.classList.remove('cell-editable');
+                            td.innerHTML = '';
+                            td.appendChild(input);
+                            input.focus();
+                        });
+
+                        tr.appendChild(td);
+                    });
+
+                    if (excludedRowIndices.has(actualIndex)) {
+                        tr.classList.add('row-excluded');
+                    }
+
+                    pqTableBody.appendChild(tr);
+                }
+            });
+
+            updatePqStatus();
+        }
+
+        // Actualizar visualmente estados de fila del modal
+        function renderPqRowStates() {
+            visibleRowIndices.forEach(idx => {
+                const tr = document.getElementById(`pq-row-${idx}`);
+                if (tr) {
+                    const check = tr.querySelector('.cell-checkbox .checkbox-input');
+                    if (check) {
+                        const isSelected = !excludedRowIndices.has(idx);
+                        check.checked = isSelected;
+                        if (isSelected) {
+                            tr.classList.remove('row-excluded');
+                        } else {
+                            tr.classList.add('row-excluded');
+                        }
+                    }
+                }
+            });
+        }
+
+        // Actualizar visualmente estados de celdas de columna del modal
+        function renderPqColumnExcludedCells(colIdx, isExcluded) {
+            const cells = pqTableBody.querySelectorAll(`td[data-col="${colIdx}"]`);
+            cells.forEach(td => {
+                if (isExcluded) {
+                    td.classList.add('col-excluded-cell');
+                } else {
+                    td.classList.remove('col-excluded-cell');
+                }
+            });
+        }
+
+        // Actualizar contadores de estado inferior
+        function updatePqStatus() {
+            const totalRows = workingRows.length - 1;
+            const selectedRows = totalRows - excludedRowIndices.size;
+            pqStatusRows.textContent = `Filas: ${selectedRows} de ${totalRows} seleccionadas`;
+
+            const totalCols = workingRows[0] ? workingRows[0].length : 0;
+            const selectedCols = totalCols - excludedColIndices.size;
+            pqStatusCols.textContent = `Columnas: ${selectedCols} de ${totalCols} seleccionadas`;
+        }
+
+
+        // --- CONVERSIÓN Y DESCARGA FINAL ---
+        convertBtn.addEventListener('click', async () => {
+            if (!loadedFile || workingRows.length === 0) return;
+
+            // Bloquear UI
+            convertBtn.setAttribute('disabled', 'true');
+            btnSpinner.style.display = 'inline-block';
+            btnText.textContent = 'Procesando conversión...';
+            clearStatus();
+
+            try {
+                const separatorValue = separatorSelect.value === 'auto' ? ',' : separatorSelect.value;
+                const charsetValue = charsetSelect.value;
+                const showSummaryRowValue = totalsCheckbox.checked;
+
+                // Reconstruir los datos finales aplicando exclusiones de filas y columnas
+                const finalRows = [];
+                
+                workingRows.forEach((row, rowIdx) => {
+                    // Omitir si es fila excluida (el header index 0 no se excluye)
+                    if (rowIdx > 0 && excludedRowIndices.has(rowIdx)) return;
+
+                    // Omitir columnas excluidas en esta fila
+                    const filteredRow = row.filter((_, colIdx) => !excludedColIndices.has(colIdx));
+                    finalRows.push(filteredRow);
+                });
+
+                if (finalRows.length <= 1) {
+                    throw new Error('Debe conservar al menos una columna y una fila de datos para generar el archivo Excel.');
+                }
+
+                // Generar CSV plano
+                const newCsvString = finalRows.map(row => 
+                    row.map(cell => {
+                        if (cell === null || cell === undefined) return '';
+                        const cellStr = String(cell);
+                        if (cellStr.includes(separatorValue) || cellStr.includes('"') || cellStr.includes('\n') || cellStr.includes('\r')) {
+                            return `"${cellStr.replace(/"/g, '""')}"`;
+                        }
+                        return cellStr;
+                    }).join(separatorValue)
+                ).join('\r\n');
+
+                // Crear archivo virtual File
+                const filteredFile = new File([newCsvString], loadedFile.name, { type: 'text/csv' });
+
+                const metaData = {
+                    title: loadedFile.name.replace(/\.csv$/i, ''),
+                    subject: 'Convertido con Power Query Avanzado',
+                    creator: 'Excel 365 Converter',
+                    company: 'Autogenerado',
+                    created: new Date(),
+                    modified: new Date()
+                };
+
+                // Ejecución del motor
+                const aTag = await Csv2Xlsx.convertCsv(
+                    filteredFile, 
+                    null, 
+                    metaData, 
+                    charsetValue, 
+                    updateConversionState, 
+                    true, 
+                    separatorValue, 
+                    null, 
+                    showSummaryRowValue
+                );
+
+                if (aTag) {
+                    aTag.style.display = 'none';
+                    document.body.appendChild(aTag);
+                    aTag.click();
+                    document.body.removeChild(aTag);
+                    showStatus('¡Conversión exitosa! El archivo Excel se ha descargado.', 'success');
+                } else {
+                    throw new Error('No se pudo generar el enlace de descarga.');
+                }
+            } catch (err) {
+                showStatus(`Error en la conversión: ${err.message || err}`, 'error');
+            } finally {
+                convertBtn.removeAttribute('disabled');
+                btnSpinner.style.display = 'none';
+                btnText.textContent = 'Convertir a Excel (.xlsx)';
+            }
+        });
+
+        function updateConversionState(u) {
+            switch (u.state) {
+                case 'processing':
+                    btnText.textContent = 'Generando estructura Excel...';
+                    break;
+                case 'fail':
+                    showStatus(`Error: ${u.msg}`, 'error');
+                    break;
+                case 'finished':
+                    btnText.textContent = '¡Completado!';
+                    break;
+            }
+        }
+
+        function showStatus(message, type) {
+            statusMessage.textContent = message;
+            statusMessage.className = `status-container ${type}`;
+        }
+
+        function clearStatus() {
+            statusMessage.textContent = '';
+            statusMessage.className = 'status-container';
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,325 @@
+/*
+    Copyright (c) 2024 Lukas Buchs, netas.ch
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+ */
+
+import { Csv2Json } from './Csv2Json.js';
+import { Utils } from '../util/Utils.js';
+
+export class CsvProcessing {
+    #rows;
+    #columnTypes = [];
+    #columns = [];
+    #defaultFormatCodes = {
+        text: '@',
+        date: 'dd.mm.yyyy',
+        datetime: 'dd.mm.yyyy hh:mm',
+        number: '0',
+        float: '#,##0.0',
+        percentage: '0%'
+    };
+    #defaultColumnWidths = {
+        text: 10,
+        date: 12,
+        datetime: 16,
+        number: 10,
+        float: 10,
+        percentage: 10
+    };
+
+    constructor(csvString, csvSeparator, formatCodes) {
+        this.#rows = Csv2Json(csvString, {separator: csvSeparator ? csvSeparator : '', returnArray: true});
+
+        if (formatCodes) {
+            for (const fc in formatCodes) {
+                this.#defaultFormatCodes[fc] = formatCodes[fc];
+            }
+        }
+
+        for (let i = 0; i < this.#getColumnCount(); i++) {
+            const t = this.#getColumnType(i, 1);
+
+            // column width
+            const cW = this.#defaultColumnWidths[t] ? this.#defaultColumnWidths[t] : 10;
+
+            this.#columns.push({
+                name: this.#getValidColumnName(this.#rows && this.#rows[0] && this.#rows[0][i] ? this.#rows[0][i] : null, i+1),
+                rowKey: i,
+                type: t, // skip row 0 as it contains the header
+                width: cW,
+                columnType: this.#getColumnTypeObj(t),
+                totalFormula: null
+            });
+        }
+
+        // make column names unique
+        this.#uniqueColumnNames();
+
+        // convert
+        this.#convertRowData();
+
+        // adjust column width to content
+        this.#columns.forEach((column, i) => {
+            column.width = this.#getColumnWidth(i, column.width);
+        });
+
+    }
+
+    getCsvData() {
+        return {
+            columnTypes: this.#columnTypes,
+            columns: this.#columns,
+            rows: this.#rows
+        };
+    }
+
+
+    // PRIVATE
+
+
+    /**
+     * gets the numer of columns
+     * @returns {Number}
+     */
+    #getColumnCount() {
+        let cnt = 0;
+        for (let i = 0; i < this.#rows.length; i++) {
+            cnt = Math.max(cnt, this.#rows[i].length);
+        }
+        return cnt;
+    }
+
+    #getValidColumnName(str, colNr) {
+        if (str) {
+
+            // line breaks are not allowed in column headers
+            str = str.replace(/(\w)\-[\r\n]+(\w)/g, '$1$2').replace(/[\r\n\t]/g, ' ').trim();
+            if (str) {
+                return str;
+            }
+        }
+
+        // return default
+        return 'Column ' + Utils.numericToAlphaColumn(colNr);
+    }
+
+    /**
+     * get the type of a column.
+     *
+     * @param {Number} columnIndex
+     * @param {Number} from
+     * @returns {String} text | date | datetime | integer | float1 | float2 | float[...x]
+     */
+    #getColumnType(columnIndex, from=0) {
+        let type = '', floatLen=0;
+
+        for (let i = from; i < this.#rows.length; i++) {
+            const v = this.#rows[i][columnIndex];
+
+            if (typeof v !== 'undefined' && v !== '') {
+                let t = 'text';
+
+                if (Utils.stringIsInteger(v)) {
+                    t = 'number';
+
+                } else if (Utils.stringIsFloat(v)) {
+                    t = 'float';
+
+                    const mt = v.match(/(?<=\.)[0-9]+$/);
+                    if (mt) {
+                        floatLen = Math.max(floatLen, mt[0].length);
+                    }
+
+                } else if (Utils.stringIsDateTime(v)) {
+                    t = 'datetime';
+
+                } else if (Utils.stringIsDate(v)) {
+                    t = 'date';
+
+                // percentage value 20%
+                } else if (v.match(/^\d+(?:\.(\d+))?\s*%$/)) {
+                    t = 'percentage';
+                    const mt = v.match(/^\d+(?:\.(\d+))?\s*%$/);
+                    floatLen = Math.max(floatLen, mt[1] ? mt[1].length : 0);
+                }
+
+                // Compare with other rows
+                // -----------------------
+
+                if ((type === 'float' && t === 'number') || (type === 'number' && t === 'float')) {
+                    type = 'float';
+
+                // different types? use text
+                } else if (type !== '' && type !== t) {
+                    return 'text';
+
+                // letters? then its text.
+                } else if (t === 'text' && v.match(/[a-zA-ZöüäÖÜÄéèàÉÈÀÂâ]{2}/)) {
+                    return 'text';
+
+                // Excel will automatically convert numbers to Scientific Notation if longer than 15 digits.
+                // If you need to enter long numeric strings, but don't want them converted, then format the cells in question as Text.
+                } else if (t === 'number' && v.length > 15) {
+                    return 'text';
+
+                // check next row
+                } else {
+                    type = t;
+                }
+            }
+        }
+
+        if (type === 'float' || type === 'percentage') {
+            return type + floatLen;
+        }
+
+        if (type !== '') {
+            return type;
+        }
+
+        return 'text';
+    }
+
+    #getColumnWidth(columnIndex, width, maxWidth=120) {
+        const columnType = this.#columns[columnIndex] && this.#columns[columnIndex].columnType ? this.#columns[columnIndex].columnType : null;
+
+        for (let i = 0; i < this.#rows.length; i++) {
+            let v = this.#rows[i][columnIndex];
+
+            if (typeof v === 'number') {
+                v = this.#getNumberAsString(v, columnType ? columnType.fractionDigits : 0);
+            }
+
+            if (v && typeof v === 'string') {
+                let wx = Utils.excelStringWidth(v, i===0);
+                width = Math.max(width, wx);
+
+                if (width > maxWidth) {
+                    return maxWidth;
+                }
+            }
+        }
+        return Math.ceil(width);
+    }
+
+    #convertRowData() {
+        for (let i = 0; i < this.#rows.length; i++) {
+            for (let y = 0; y < this.#columns.length; y++) {
+                const col = this.#columns[y], cellValue = this.#rows[i][y];
+
+                // first row contains column names
+                if (i === 0) {
+                    this.#rows[i][y] = col.name;
+
+                } else if (typeof cellValue === 'undefined' || cellValue === '') {
+                    this.#rows[i][y] = null;
+
+                } else {
+                    if (col.type === 'number') {
+                        this.#rows[i][y] = parseInt(cellValue);
+
+                    } else if (col.type.startsWith('float')) {
+                        this.#rows[i][y] = parseFloat(cellValue);
+
+                    } else if (col.type.startsWith('percentage')) {
+                        this.#rows[i][y] = parseFloat(cellValue.substring(0,cellValue.length-1).trim()) / 100;
+
+                    } else if (col.type === 'date' || col.type === 'datetime') {
+                        this.#rows[i][y] = Utils.parseDate(cellValue);
+
+                    } else if (col.type === 'text' && typeof cellValue === 'string' && cellValue !== '') {
+                        this.#rows[i][y] = cellValue.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, ' '); // remove special chars
+                    }
+                }
+            }
+        }
+    }
+
+    #getColumnTypeObj(typeStr, formatCode='') {
+        if (typeStr === 'text') {
+            return null;
+        }
+
+        let fractionDigits = 0;
+
+        if (!formatCode) {
+            if (this.#defaultFormatCodes[typeStr]) {
+                formatCode = this.#defaultFormatCodes[typeStr];
+
+            } else if (typeStr.startsWith('float')) {
+                formatCode = this.#defaultFormatCodes.float;
+                fractionDigits = parseInt(typeStr.substring(5));
+                if (fractionDigits > 1 && formatCode.endsWith('.0')) { // add the same precision as in the csv.
+                    formatCode += '0'.repeat(fractionDigits - 1);
+                }
+
+            } else if (typeStr.startsWith('percentage')) {
+                formatCode = this.#defaultFormatCodes.percentage;
+                fractionDigits = parseInt(typeStr.substring('percentage'.length));
+                if (fractionDigits > 0 && formatCode === '0%') {
+                    formatCode = '0.' + ('0'.repeat(fractionDigits)) + '%';
+                }
+            }
+        }
+
+        // search for existing
+        for (const columnType of this.#columnTypes) {
+            if (columnType.type === typeStr && columnType.formatCode === formatCode) {
+                return columnType;
+            }
+        }
+
+        // create a new one
+        const nt = {
+            type: typeStr,
+            formatCode: formatCode,
+            fractionDigits: fractionDigits,
+            applyNumberFormat: 1,
+            numFmtId: null
+        };
+        this.#columnTypes.push(nt);
+
+        return nt;
+    }
+
+    #getNumberAsString(num, fractionDigits) {
+        return num.toLocaleString('en-US', {
+            minimumFractionDigits: fractionDigits,
+            maximumFractionDigits: fractionDigits
+        });
+    }
+
+    /**
+     * check that every column name is unique
+     */
+    #uniqueColumnNames() {
+        const nameArray = [];
+        for (const column of this.#columns) {
+            let suffix = '', cntr = 1;
+
+            while (nameArray.indexOf((column.name + suffix).toLowerCase()) !== -1) {
+                cntr++;
+                suffix = ' ' + cntr;
+            }
+
+            nameArray.push((column.name + suffix).toLowerCase());
+
+            if (suffix) {
+                column.name += suffix;
+            }
+        }
+    }
+
+}
+
