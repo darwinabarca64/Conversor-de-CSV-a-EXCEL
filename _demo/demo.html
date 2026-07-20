@@ -1150,6 +1150,21 @@
                     th.classList.add('col-excluded');
                 }
 
+                // Calcular estadísticas de la columna (datos del cuerpo)
+                let emptyCount = 0;
+                let filledCount = 0;
+                for (let rIdx = 1; rIdx < workingRows.length; rIdx++) {
+                    const cell = workingRows[rIdx][colIdx];
+                    if (cell === null || cell === undefined || String(cell).trim() === '') {
+                        emptyCount++;
+                    } else {
+                        filledCount++;
+                    }
+                }
+                const totalColRows = workingRows.length - 1;
+                const colPct = totalColRows > 0 ? Math.round((filledCount / totalColRows) * 100) : 0;
+                const colStatsText = `${colPct}% lleno` + (emptyCount > 0 ? ` (${emptyCount} vacíos)` : '');
+
                 const colContainer = document.createElement('div');
                 colContainer.className = 'col-header-container';
 
@@ -1203,6 +1218,16 @@
                 colContainer.appendChild(colText);
                 colContainer.appendChild(colActions);
                 th.appendChild(colContainer);
+
+                // Subetiqueta con estadísticas de llenado
+                const colMeta = document.createElement('div');
+                colMeta.style.fontSize = '0.7rem';
+                colMeta.style.color = '#797775';
+                colMeta.style.fontWeight = 'normal';
+                colMeta.style.marginTop = '3px';
+                colMeta.textContent = colStatsText;
+                th.appendChild(colMeta);
+
                 headerTr.appendChild(th);
             });
             pqTableHead.appendChild(headerTr);
@@ -1221,9 +1246,28 @@
                     const tr = document.createElement('tr');
                     tr.id = `pq-row-${actualIndex}`;
 
+                    // Evaluar si la fila está vacía o incompleta
+                    let emptyCellsInRow = 0;
+                    let activeColsCount = 0;
+                    row.forEach((cell, colIdx) => {
+                        if (!excludedColIndices.has(colIdx)) {
+                            activeColsCount++;
+                            if (cell === null || cell === undefined || String(cell).trim() === '') {
+                                emptyCellsInRow++;
+                            }
+                        }
+                    });
+                    const isRowEmpty = (emptyCellsInRow === activeColsCount && activeColsCount > 0);
+
                     // Checkbox de fila
                     const tdCheck = document.createElement('td');
                     tdCheck.className = 'cell-checkbox';
+                    tdCheck.style.display = 'flex';
+                    tdCheck.style.alignItems = 'center';
+                    tdCheck.style.justifyContent = 'center';
+                    tdCheck.style.gap = '0.35rem';
+                    tdCheck.style.borderRight = '1px solid var(--pq-grid-line)';
+
                     const check = document.createElement('input');
                     check.type = 'checkbox';
                     check.className = 'checkbox-input';
@@ -1242,6 +1286,25 @@
                         selectAllCheck.checked = allVisibleSelected;
                     });
                     tdCheck.appendChild(check);
+
+                    // Añadir indicador visual de fila vacía o incompleta
+                    if (isRowEmpty) {
+                        const emptyBadge = document.createElement('span');
+                        emptyBadge.textContent = '∅';
+                        emptyBadge.title = 'Fila completamente vacía';
+                        emptyBadge.style.color = '#a19f9d';
+                        emptyBadge.style.fontSize = '0.85rem';
+                        emptyBadge.style.fontWeight = 'bold';
+                        tdCheck.appendChild(emptyBadge);
+                    } else if (emptyCellsInRow > 0) {
+                        const warningBadge = document.createElement('span');
+                        warningBadge.textContent = '⚠️';
+                        warningBadge.title = `Fila con ${emptyCellsInRow} campo(s) vacío(s)`;
+                        warningBadge.style.cursor = 'help';
+                        warningBadge.style.fontSize = '0.75rem';
+                        tdCheck.appendChild(warningBadge);
+                    }
+
                     tr.appendChild(tdCheck);
 
                     // Celdas
