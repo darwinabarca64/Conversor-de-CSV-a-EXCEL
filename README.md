@@ -93,6 +93,6 @@ Este proyecto está bajo la Licencia **Apache 2.0**. Consulta el archivo [LICENS
 
 ### Librerías y Recursos Utilizados:
 
-*   [Nullxlsx] (https://github.com/netas-ch/csv2xlsx) (JavaScript csv to spreadsheet (xlsx) converter) - Copyright © 2024 Lukas Buchs, netas.ch, Apache License, Version 2.0.
+*   [netas-csv2xlsx](https://github.com/netas-ch/csv2xlsx) (JavaScript csv to spreadsheet (xlsx) converter) - Copyright © 2024 Lukas Buchs, netas.ch, Apache License, Version 2.0.
 *   [Nullxlsx](https://github.com/Neovici/nullxlsx) (Compresión ZIP y generación XML ligera) - Copyright © 2020 Neovici (Apache 2.0).
 *   [csvjson-csv2json](https://github.com/FlatFilers/csvjson-csv2json) (Parser léxico PEG.js para CSV) - Copyright © 2019 Martin Drapeau (MIT).
