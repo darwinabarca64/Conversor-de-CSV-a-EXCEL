@@ -1,5 +1,6 @@
 /*
-    Copyright (c) 2024 Lukas Buchs, netas.ch
+    Copyright (c) 2026 Darwin Abarca, abarcavargas.com
+
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.

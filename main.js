@@ -1,8 +1,8 @@
 /* 
- * Copyright © 2023 Netas Ltd., Switzerland.
+ * Copyright © 2026 Gattu. sl., Spain.
  * All rights reserved.
- * @author  Lukas Buchs, lukas.buchs@netas.ch
- * @date    2023-04-12
+ * @author  Darwin Abarca, darwin@abarcavargas.com
+ * @date    2026-21-07
  */
 
 

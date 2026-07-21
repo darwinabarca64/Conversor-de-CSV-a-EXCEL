@@ -2,8 +2,8 @@
   "name": "conversor-de-csv-a-excel",
   "version": "1.4.0",
   "description": "Conversor de CSV a Excel en JavaScript",
-  "author": "Lukas Buchs, netas.ch",
-  "homepage": "https://www.netas.ch",
+  "author": "Darwin Abarca, darwin@abarcavargas.com",
+  "homepage": "https://www.abarcavargas.com",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
